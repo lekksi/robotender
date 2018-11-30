@@ -1,287 +1,411 @@
-import React, { Component } from 'react'
+import React, {Component} from 'react'
 import './App.css'
 import Lottie from 'react-lottie'
-import * as fillAnimation from './pink_drink_machine.json'
 
-const SpeechRecognition = SpeechRecognition || window.webkitSpeechRecognition
-const SpeechGrammarList = SpeechGrammarList || window.webkitSpeechGrammarList
-const SpeechRecognitionEvent = SpeechRecognitionEvent || window.webkitSpeechRecognitionEvent
+const SpeechRecognition = SpeechRecognition || window.webkitSpeechRecognition;
+const SpeechGrammarList = SpeechGrammarList || window.webkitSpeechGrammarList;
+const SpeechRecognitionEvent = SpeechRecognitionEvent || window.webkitSpeechRecognitionEvent;
 
 const words = [
-  'hello',
-  'hi',
-  'thank you',
-  'thanks',
-  'cheers',
-  'shit',
-  'fuck',
-  'yes',
-  'no',
-  'number one',
-  'number two',
-  'one',
-  'two',
-  'love you',
-]
-const grammar = `#JSGF V1.0; grammar words; public <word> = ${words.join(' | ')} ;`
-const speechRecognitionList = new SpeechGrammarList()
-speechRecognitionList.addFromString(grammar, 1)
+    'hello',
+    'hi',
+    'thank you',
+    'thanks',
+    'cheers',
+    'shit',
+    'fuck',
+    'yes',
+    'sure',
+    'no',
+    'number one',
+    'number two',
+    'one',
+    'two',
+    'love you',
+    'apple',
+    'ginger',
+    'beer'
+];
+const grammar = `#JSGF V1.0; grammar words; public <word> = ${words.join(' | ')} ;`;
+const speechRecognitionList = new SpeechGrammarList();
+speechRecognitionList.addFromString(grammar, 1);
 
-const recognition = new SpeechRecognition()
-recognition.grammars = speechRecognitionList
-recognition.continuous = false
-recognition.lang = 'en-US'
-recognition.interimResults = false
-recognition.maxAlternatives = 1
+const recognition = new SpeechRecognition();
+recognition.grammars = speechRecognitionList;
+recognition.continuous = false;
+recognition.lang = 'en-US';
+// recognition.interimResults = false;
+recognition.interimResults = true;
+recognition.maxAlternatives = 1;
 
-const synth = window.speechSynthesis
+const synth = window.speechSynthesis;
 
 class App extends Component {
-  state = {
-    shouldBeListening: true,
-    isListening: false,
-    status: 'hello', // hello | drink? | choice | fill
-  }
 
-  componentDidMount() {
-    recognition.start()
+    state = {
+        shouldBeListening: true,
+        isListening: false,
+        status: 'hello', // hello | drink? | choice | fill
+        // status: 'choice', // hello | drink? | choice | fill
+    };
 
-    recognition.onresult = (event) => {
-      const word = event.results[event.results.length - 1][0].transcript
+    sorryTimeout = null;
 
-      if (!this.state.shouldBeListening || synth.speaking || synth.pending) {
-        try { recognition.abort() } catch (e) { }
+    componentDidMount() {
+        recognition.onresult = (event) => {
+            const word = event.results[event.results.length - 1][0].transcript;
 
-        return
-      }
+            console.log("Result:", word);
 
-      this.artificialIntelligence(word)
+            // if (!this.state.shouldBeListening || synth.speaking || synth.pending) {
+            if (synth.speaking || synth.pending) {
+                console.log("Abort", synth.speaking, synth.pending);
+
+                recognition.abort();
+
+                return
+            }
+
+            this.artificialIntelligence(word.toLowerCase())
+        };
+
+        recognition.onspeechstart = () => console.log('Speech start');
+        recognition.onspeechend = () => console.log('Speech end');
+        recognition.onaudiostart = () => {
+            // console.log("Audio start")
+            this.setState({isListening: true});
+        };
+        recognition.onaudioend = () => {
+            // console.log("Audio end")
+            this.setState({isListening: false});
+        };
+
+        setInterval(() => {
+            try {
+                if (this.state.shouldBeListening) {
+                    this.startListening();
+                } else {
+                    this.stopListening();
+                }
+            } catch (e) {
+            }
+        }, 100);
     }
 
-    recognition.onspeechend = () => console.log('Speech has stopped being detected')
-    recognition.onspeechstart = () => console.log('Speech has been detected')
-    recognition.onaudioend = () => this.setState({ isListening: false })
-    recognition.onaudiostart = () => this.setState({ isListening: true })
+    startListening = () => {
+        if (this.state.isListening) {
+            // console.log("Already listening");
+            return;
+        }
 
-    setInterval(() => { try { this.state.shouldBeListening && recognition.start() } catch (e) { } } , 100)
-  }
+        try {
+            // console.log("Start listening");
 
-  artificialIntelligence = word => {
-    const { status } = this.state
+            recognition.start();
+        } catch (e) {
+            // console.log("Already started");
+        }
+    };
 
-    this.setListening(false)
+    stopListening = () => {
+        if (!this.state.isListening) {
+            // console.log("Not listening");
+            return;
+        }
 
-    if (status === 'hello') {
-      if (
-        word.includes('hello') ||
-        word.includes('hi')
-      ) {
-        this.hello()
-      }
-    } else if (status === 'drink?') {
-      if (word.includes('yes')) {
-        this.chooseDrink()
-      } else if (word.includes('no')) {
-        this.cancel()
-      }
-    } else if (status === 'choice') {
-      if (word.includes(1) || word.includes(2) || word.includes('one') || word.includes('two')) {
-        this.fixDrink((word.includes('one') || word.includes(1)) ? 1 : 2)
-      } else if (word.includes('nothing')) {
-        this.cancel()
-      }
-    }
+        try {
+            console.log("Stop listening");
 
-    if (
-      word.includes('thank') ||
-      word.includes('thanks') ||
-      word.includes('cheers')
-    ) {
-      this.say('Oh... you are so kind')
-    }
+            recognition.stop();
+        } catch (e) {
+            // console.log("Already stopped");
+        }
+    };
 
-    if (word.includes('love you')) {
-      this.say('I love you, too. Or then I am just drunk')
-    }
+    artificialIntelligence = word => {
+        const {status} = this.state;
 
-    if (word.includes('*')) {
-      this.say('Mind your language, mister!')
-    }
+        this.setListening(false);
 
-    setTimeout(() => this.setListening(true), 1)
-  }
+        if (status === 'hello') {
+            if (
+                word.includes('hello') ||
+                word.includes('hi')
+            ) {
+                this.hello()
+            }
+        } else if (status === 'drink?') {
+            if (
+                word.includes('yes') ||
+                word.includes('yeah') ||
+                word.includes('sure') ||
+                word.includes('please')
+            ) {
+                this.chooseDrink()
+            } else if (word.includes('no')) {
+                this.cancel()
+            }
+        } else if (status === 'choice') {
+            if (
+                word.includes(1) ||
+                word.includes('one') ||
+                word.includes('sangria') ||
+                word.includes('christmas')
+            ) {
+                this.fixDrink(1)
+            } else if (
+                word.includes(2) ||
+                word.includes('apple') ||
+                word.includes('beer') ||
+                word.includes('ginger') ||
+                word.includes('two')
+            ) {
+                this.fixDrink(2)
+            } else if (word.includes('nothing')) {
+                this.cancel()
+            } else {
+                this.sorry();
+            }
+        }
 
-  hello = () => {
-    this.say('Hello there! ...')
-    this.say('Can I fix you a drink?')
+        if (
+            word.includes('thank') ||
+            word.includes('thanks') ||
+            word.includes('cheers')
+        ) {
+            this.say('Oh... you are so welcome')
+        } else if (word.includes('love you')) {
+            this.say('I love you, too. Or then I am just drunk in love.')
+        } else if (word.includes("what's up")) {
+            this.say("Not much. Which one of us do you think is more drunk?")
+        } else if (word.includes('shut up')) {
+            this.say("R u d e, rude. I can't shut up but I can be shut down.");
+        }
+        else if (word.includes('*')) {
+            this.say('Mind your language, would you!')
+        }
 
-    this.setState({ status: 'drink?' })
-  }
+        setTimeout(() => this.setListening(true), 1)
+    };
 
-  cancel = () => {
-    this.say('Ok, well, fuck off')
+    hello = () => {
+        this.say('Hello there! ...', () => {
+            this.say('Can I fix you a drink?', () => {
+                this.setState({status: 'drink?'}, () => {
+                    this.setListening(true);
+                })
+            });
+        });
+    };
 
-    this.setState({ status: 'hello' })
-  }
+    cancel = () => {
+        this.say('Ok, well, another time then');
 
-  chooseDrink = () => {
-    this.say('Got it! Take a look at the drink list. Let me know what you want.')
+        this.setState({status: 'hello'})
+    };
 
-    this.setState({ status: 'choice' })
-  }
+    chooseDrink = () => {
+        this.say('Got it! Take a look at the drink list. Let me know what you want.', () => {
+            this.setListening(true);
+        });
 
-  fixDrink = (choice) => {
-    const drinks = {
-      1: 'Jack Daniels Cola',
-      2: 'Jallu kola'
-    }
+        this.setState({status: 'choice'})
+    };
 
-    this.say(`Excellent choice!`)
-    this.say(`One ${drinks[choice]}, coming right up!`)
+    fixDrink = (choice) => {
+        const drinks = {
+            1: 'Christmas sangria',
+            2: 'Apple ginger beer'
+        };
 
-    this.setState({ status: 'fill' })
+        this.say(`Excellent choice!`, () => {
+            this.say(`One ${drinks[choice]}, coming right up!`, () => {
+                this.setState({status: 'fill'});
 
-    // TODO: Make the API call here.
+                const oReq = new XMLHttpRequest();
+                oReq.open("GET", "http://localhost:5000");
+                oReq.send();
 
-    setTimeout(() => {
-      this.say('All done! Enjoy your evening with your increased alcohol level in your blood')
+                setTimeout(() => {
+                    this.say('All done! Enjoy your evening with your increased alcohol level in your blood', () => {
+                        this.setState({status: 'done'});
 
-      this.setState({ status: 'done' })
+                        setTimeout(() => this.setState({status: 'hello'}), 8000)
+                    });
 
-      setTimeout(() => this.setState({ status: 'hello' }), 8000)
-    }, 12000)
-  }
+                }, 2000)
+            });
+        });
 
-  say = what => {
-    const utterance = new SpeechSynthesisUtterance(what)
-    utterance.pitch = 1.2
-    utterance.rate = 0.9
-    utterance.volume = 1
-    utterance.lang = 'en-US'
+    };
 
-    synth.speak(utterance)
-  }
+    say = (what, onEnd) => {
+        this.setListening(false);
+        this.clearSorry();
 
-  setListening = shouldListen => {
-    this.setState({ shouldBeListening: shouldListen })
-  }
+        const utterance = new SpeechSynthesisUtterance(what);
+        utterance.pitch = 1.2;
+        // utterance.rate = 0.9;
+        utterance.rate = 1.6;
+        utterance.volume = 1;
+        utterance.lang = 'en-US';
 
-  render() {
-    const { status } = this.state
+        if (onEnd) {
+            utterance.onend = () => {
+                console.log("SAID:", what);
 
-    const done = {
-      loop: true,
-      autoplay: true,
-      animationData: require('./thirsty'),
-      rendererSettings: {
-        preserveAspectRatio: 'xMidYMid slice'
-      }
-    }
+                this.setListening(true);
 
-    const fill = {
-      ...done,
-      animationData: require('./loader'),
-    }
+                onEnd();
+            };
+        }
 
-    const idle = {
-      ...done,
-      animationData: require('./soda_loader'),
-    }
+        synth.speak(utterance)
+    };
 
-    const listening = {
-      ...done,
-      animationData: require('./ripple_loading_animation'),
-    }
+    clearSorry = () => {
+        if (this.sorryTimeout) {
+            clearTimeout(this.sorryTimeout);
+        }
+    };
 
-    return (
-      <div className="App">
-        {status === 'hello' && <div>
-          <Lottie
-            options={idle}
-            height={400}
-            width={400}
-          />
+    sorry = () => {
+        this.clearSorry();
 
-          <div className="sub">
-            Want me to fix you a drink? <br/>Just say <i>hello</i>.
-          </div>
-        </div>}
+        const sorrys = [
+            'Sorry - come again?',
+            'I beg your pardon?',
+            'What was that?',
+            'Could you please repeat that?',
+            "I'm not sure I heard you right?",
+        ];
 
-        {status === 'drink?' && <div>
-          <Lottie
-            options={idle}
-            height={400}
-            width={400}
-          />
+        this.sorryTimeout = setTimeout(() => {
+            this.say(sorrys[new Date().getSeconds() % sorrys.length], () => {
+                this.setListening(true);
+            })
+        }, 400);
+    };
 
-          Yes / No
-        </div>}
+    setListening = shouldListen => {
+        this.setState({shouldBeListening: shouldListen})
+    };
 
-        {status === 'choice' && <div>
-          <div className="cards">
-            <div className="card">
-              <h1>1</h1>
+    render() {
+        const {status} = this.state;
 
-              <h2>Jack Daniels Cola</h2>
+        const done = {
+            loop: true,
+            autoplay: true,
+            animationData: require('./thirsty'),
+            rendererSettings: {
+                preserveAspectRatio: 'xMidYMid slice'
+            }
+        };
 
-              <div className="sub">The best there is.</div>
+        const fill = {
+            ...done,
+            animationData: require('./loader'),
+        };
+
+        const idle = {
+            ...done,
+            animationData: require('./soda_loader'),
+        };
+
+        const listening = {
+            ...done,
+            animationData: require('./ripple_loading_animation'),
+        };
+
+        return (
+            <div className="App">
+                {status === 'hello' && <div>
+                    <Lottie
+                        options={idle}
+                        height={400}
+                        width={400}
+                    />
+
+                    <div className="sub">
+                        Want me to fix you a drink? <br/>Just say <i>hello</i>.
+                    </div>
+                </div>}
+
+                {status === 'drink?' && <div>
+                    <Lottie
+                        options={idle}
+                        height={400}
+                        width={400}
+                    />
+
+                    Yes / No
+                </div>}
+
+                {status === 'choice' && <div>
+                    <div className="cards">
+                        <div className="card">
+                            <h1>1</h1>
+
+                            <h2>Christmas sangria</h2>
+
+                            <div className="sub">Seasonal favorite.</div>
+                        </div>
+
+                        <div style={{flex: 0.2}}></div>
+
+                        <div className="card">
+                            <h1>2</h1>
+
+                            <h2>Apple ginger beer</h2>
+
+                            <div className="sub">Summer in winter.</div>
+                        </div>
+                    </div>
+
+                    <div className="sub">
+                        Place your glass on the designated target.<br/>
+                        Choose a drink by saying it's number.<br/>
+                    </div>
+                </div>}
+
+                {status === 'fill' && <div>
+                    <Lottie
+                        options={fill}
+                        height={600}
+                        width={600}
+                    />
+
+                    <div className="sub">
+                        Please have your glass on the designated target.
+                    </div>
+                </div>}
+
+                {status === 'done' && <div>
+                    <Lottie
+                        options={done}
+                        height={600}
+                        width={600}
+                    />
+
+                    Done!
+
+                    <div className="sub">Have a nice evening.</div>
+                </div>}
+
+                <div className="listening">
+                    {this.state.isListening &&
+                    <Lottie options={listening}
+                            height={80}
+                            width={80}
+                    />
+                    }
+                </div>
+
+                <div className="brand">RoboTender</div>
             </div>
-
-            <div style={{ flex: 0.2 }}></div>
-
-            <div className="card">
-              <h1>2</h1>
-
-              <h2>Jallu-kola</h2>
-
-              <div className="sub">Nothing beats Jallu.</div>
-            </div>
-          </div>
-
-          <div className="sub">
-            Place your glass on the designated target.<br/>
-            Choose a drink by saying it's number.<br/>
-          </div>
-        </div>}
-
-        {status === 'fill' && <div>
-          <Lottie
-            options={fill}
-            height={600}
-            width={600}
-          />
-
-          <div className="sub">
-            Please have your glass on the designated target.
-          </div>
-        </div>}
-
-        {status === 'done' && <div>
-          <Lottie
-            options={done}
-            height={600}
-            width={600}
-          />
-
-          Done!
-
-          <div className="sub">Have a nice evening.</div>
-        </div>}
-
-        <div className="listening">
-          {this.state.isListening &&
-            <Lottie
-              options={listening}
-              height={80}
-              width={80}
-            />
-          }
-        </div>
-
-        <div class="brand">RoboTender</div>
-      </div>
-    );
-  }
+        );
+    }
 }
 
-export default App
+export default App;
