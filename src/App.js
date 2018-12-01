@@ -220,20 +220,23 @@ class App extends Component {
 
         this.say(`Excellent choice!`, () => {
             this.say(`One ${drinks[choice]}, coming right up!`, () => {
-                this.setState({status: 'fill'});
+                this.setState({status: 'fill'}, () => {
+                    setTimeout(() => {
+                        const oReq = new XMLHttpRequest();
+                        oReq.open("GET", "http://localhost:5000");
+                        oReq.send();
 
-                const oReq = new XMLHttpRequest();
-                oReq.open("GET", "http://localhost:5000");
-                oReq.send();
+                        setTimeout(() => {
+                            this.say('All done! Enjoy your evening with your increased alcohol level in your blood', () => {
+                                this.setState({status: 'done'});
 
-                setTimeout(() => {
-                    this.say('All done! Enjoy your evening with your increased alcohol level in your blood', () => {
-                        this.setState({status: 'done'});
+                                setTimeout(() => this.setState({status: 'hello'}), 8000)
+                            });
 
-                        setTimeout(() => this.setState({status: 'hello'}), 8000)
-                    });
+                        }, 2000);
+                    }, 2000);
+                });
 
-                }, 2000)
             });
         });
 
@@ -352,15 +355,15 @@ class App extends Component {
                             <div className="sub">Seasonal favorite.</div>
                         </div>
 
-                        <div style={{flex: 0.2}}></div>
+                        {/*<div style={{flex: 0.2}}></div>*/}
 
-                        <div className="card">
-                            <h1>2</h1>
+                        {/*<div className="card">*/}
+                            {/*<h1>2</h1>*/}
 
-                            <h2>Apple ginger beer</h2>
+                            {/*<h2>Apple ginger beer</h2>*/}
 
-                            <div className="sub">Summer in winter.</div>
-                        </div>
+                            {/*<div className="sub">Summer in winter.</div>*/}
+                        {/*</div>*/}
                     </div>
 
                     <div className="sub">
